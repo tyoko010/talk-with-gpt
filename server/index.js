@@ -12,7 +12,7 @@ import { Configuration, OpenAIApi } from "openai";
 const PORT = process.env.PORT || 3001;
 
 const LANGUAGE_CODE = "ja-JP";
-const SYSTEM_PROMPT = "You are an assistant bot that is expected to converse as a close friend. Please provide appropriate responses to the user in Japanese.";
+const SYSTEM_PROMPT = "You are an assistant bot that is expected to converse as a close friend. Please keep your responses short and concise to user in Japanese.";
 
 // Recognize speech with Google Cloud Speech API
 const createRecognizeStream = (onTranscript) => {
@@ -37,7 +37,7 @@ const createRecognizeStream = (onTranscript) => {
 };
 
 // Create a completion with OpenAI API
-const createCompletion = async (message) => {
+const createCompletion = async (messageList) => {
   const configuration = new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
   });
@@ -46,8 +46,7 @@ const createCompletion = async (message) => {
     model: "gpt-3.5-turbo",
     messages: [
       { role: "system", content: SYSTEM_PROMPT},
-      { role: "user", content: message},
-    ],
+    ].concat(messageList),
     temperature: 0.5,
     max_tokens: 256,
   });
@@ -92,15 +91,27 @@ app.get("/", (req, res) => {
 io.on("connection", (socket) => {
   console.log("Client connected.");
 
+  const history = [];
+  const addMessage = (message) => {
+    console.log(`${message.role}: ${message.content}`);
+    history.push(message);
+    socket.emit("message", message);
+  }
+
   const audioStream = new PassThrough();
+
   const recognizeStream = createRecognizeStream(async (transcript) => {
-    console.log(`User: ${transcript}`);
+    const userMessage = { role: "user", content: transcript };
+    addMessage(userMessage);
 
-    const completion = await createCompletion(transcript);
-    const completionMessage = completion.data.choices[0].message.content;
-    console.log(`Assistant: ${completionMessage}`);
+    const completion = await createCompletion(history);
+    const assistantMessage = {
+      role: "assistant",
+      content: completion.data.choices[0].message.content
+    };
+    addMessage(assistantMessage);
 
-    const audioContent = await createSynthesizeSpeech(completionMessage);
+    const audioContent = await createSynthesizeSpeech(assistantMessage.content);
     socket.emit("serverAudio", audioContent);
   });
   

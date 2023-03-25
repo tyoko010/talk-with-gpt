@@ -1,11 +1,14 @@
 import React, { useState, useRef } from "react";
 import { io } from "socket.io-client";
+import { v4 as uuidv4 } from 'uuid';
+import History from "./History";
 
 const SERVER_URL = "http://localhost:3001";
 const RECORD_TIME_SLICE = 100; // 100ms
 
 function App() {
   const [isTalking, setIsTalking] = useState(false);
+  const [messageList, setMessageList] = useState([]);
   const socketRef = useRef();
   const audioRef = useRef();
 
@@ -31,6 +34,11 @@ function App() {
       bufferSource.start();
     });
 
+    socketRef.current.on('message', (message) => {
+      message['key'] = uuidv4();
+      setMessageList(oldMessageList => [...oldMessageList, message]);
+    });
+
     audioRef.current.start(RECORD_TIME_SLICE);
     setIsTalking(true);
   };
@@ -54,6 +62,9 @@ function App() {
       ) : (
         <button onClick={stopTalking}>Stop</button>
       )}
+      <div>
+        <History items={messageList} />
+      </div>
     </div>
   );
 }
