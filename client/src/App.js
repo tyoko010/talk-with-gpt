@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { io } from "socket.io-client";
 import { v4 as uuidv4 } from 'uuid';
 import History from "./History";
+import './App.css';
 
 const SERVER_URL = "http://localhost:3001";
 const RECORD_TIME_SLICE = 100; // 100ms
@@ -56,12 +57,14 @@ function App() {
 
   return (
     <div className="App">
-      <h1>Talk with GPT</h1>
-      {!isTalking ? (
-        <button onClick={startTalking}>Start</button>
-      ) : (
-        <button onClick={stopTalking}>Stop</button>
-      )}
+      <header>
+        <h1>Talk with GPT</h1>
+        {!isTalking ? (
+          <button onClick={startTalking}>Start</button>
+        ) : (
+          <button onClick={stopTalking}>Stop</button>
+        )}
+      </header>
       <div>
         <History items={messageList} />
       </div>

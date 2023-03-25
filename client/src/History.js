@@ -5,9 +5,8 @@ const History = ({ items }) => {
     <ul>
       {items.map((item) => (
         <li key={item.key}>
-          {
-            item.role === 'user' ? `🙂: ${item.content}` : `🤖: ${item.content}`
-          }
+          <span className="role">{ item.role === 'user' ? '🙂' : '🤖' }</span>
+          { item.content }
         </li>
       ))}
     </ul>
