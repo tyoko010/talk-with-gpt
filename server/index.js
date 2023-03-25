@@ -3,11 +3,16 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 
 import { SpeechClient } from "@google-cloud/speech";
+import { TextToSpeechClient } from '@google-cloud/text-to-speech';
+
 import { PassThrough } from 'stream';
 
 import { Configuration, OpenAIApi } from "openai";
 
 const PORT = process.env.PORT || 3001;
+
+const LANGUAGE_CODE = "ja-JP";
+const SYSTEM_PROMPT = "You are an assistant bot that is expected to converse as a close friend. Please provide appropriate responses to the user in Japanese.";
 
 // Recognize speech with Google Cloud Speech API
 const createRecognizeStream = (onTranscript) => {
@@ -15,7 +20,7 @@ const createRecognizeStream = (onTranscript) => {
     config:  {
       encoding: "WEBM_OPUS",
       sampleRateHertz: 48000,
-      languageCode: "ja-JP",
+      languageCode: LANGUAGE_CODE,
     },
     interimResults: false,
   };
@@ -27,7 +32,6 @@ const createRecognizeStream = (onTranscript) => {
       const transcript = data.results
         .map(result => result.alternatives[0].transcript)
         .join('\n');
-      console.log(`Transcript: ${transcript}`);
       onTranscript(transcript);
     });
 };
@@ -41,13 +45,34 @@ const createCompletion = async (message) => {
   const completion = await openai.createChatCompletion({
     model: "gpt-3.5-turbo",
     messages: [
-      { role: "system", content: "You are an assistant bot that is expected to converse as a close friend. Please provide appropriate responses to the user in Japanese."},
+      { role: "system", content: SYSTEM_PROMPT},
       { role: "user", content: message},
     ],
     temperature: 0.5,
     max_tokens: 256,
   });
   return completion;
+};
+
+// Synthesize speech with Google Cloud Text-to-Speech API
+const createSynthesizeSpeech = async (message) => {
+  const request = {
+    input: {
+      text: message,
+    },
+    voice: {
+      languageCode: LANGUAGE_CODE,
+      ssmlGender: "NEUTRAL",
+    },
+    audioConfig: {
+      audioEncoding: "LINEAR16",
+    },
+  };
+
+  const [response] = await new TextToSpeechClient()
+    .synthesizeSpeech(request)
+    .catch('error', console.error);
+  return response.audioContent;
 };
 
 // Create a server with Express and Socket.io
@@ -69,11 +94,17 @@ io.on("connection", (socket) => {
 
   const audioStream = new PassThrough();
   const recognizeStream = createRecognizeStream(async (transcript) => {
+    console.log(`User: ${transcript}`);
+
     const completion = await createCompletion(transcript);
-    console.log(`Completion: ${completion.data.choices[0].message.content}`);
+    const completionMessage = completion.data.choices[0].message.content;
+    console.log(`Assistant: ${completionMessage}`);
+
+    const audioContent = await createSynthesizeSpeech(completionMessage);
+    socket.emit("serverAudio", audioContent);
   });
   
-  socket.on("audioData", (data) => {
+  socket.on("clientAudio", (data) => {
     audioStream.write(data);
   });
 

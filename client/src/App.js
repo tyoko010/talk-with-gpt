@@ -5,11 +5,11 @@ const SERVER_URL = "http://localhost:3001";
 const RECORD_TIME_SLICE = 100; // 100ms
 
 function App() {
-  const [isRecording, setIsRecording] = useState(false);
+  const [isTalking, setIsTalking] = useState(false);
   const socketRef = useRef();
   const audioRef = useRef();
 
-  const startRecording = async () => {
+  const startTalking = async () => {
     socketRef.current = io(SERVER_URL);
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -17,14 +17,25 @@ function App() {
     audioRef.current.ondataavailable = (e) => {
       if (e.data.size > 0) {
         const audioBlob = e.data;
-        socketRef.current.emit("audioData", audioBlob);
+        socketRef.current.emit("clientAudio", audioBlob);
       }
     };
+
+    socketRef.current.on('serverAudio', async (data) => {
+      const audioContext = new AudioContext();
+      const audioBuffer = await audioContext.decodeAudioData(data);
+
+      const bufferSource = audioContext.createBufferSource();
+      bufferSource.buffer = audioBuffer;
+      bufferSource.connect(audioContext.destination);
+      bufferSource.start();
+    });
+
     audioRef.current.start(RECORD_TIME_SLICE);
-    setIsRecording(true);
+    setIsTalking(true);
   };
 
-  const stopRecording = () => {
+  const stopTalking = () => {
     if (audioRef.current) {
       audioRef.current.stop();
       audioRef.current.stream.getTracks().forEach((track) => track.stop());
@@ -32,16 +43,16 @@ function App() {
     if (socketRef.current) {
       socketRef.current.disconnect();
     }
-    setIsRecording(false);
+    setIsTalking(false);
   };
 
   return (
     <div className="App">
-      <h1>Speak with GPT</h1>
-      {!isRecording ? (
-        <button onClick={startRecording}>Start</button>
+      <h1>Talk with GPT</h1>
+      {!isTalking ? (
+        <button onClick={startTalking}>Start</button>
       ) : (
-        <button onClick={stopRecording}>Stop</button>
+        <button onClick={stopTalking}>Stop</button>
       )}
     </div>
   );
