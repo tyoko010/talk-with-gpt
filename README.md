@@ -13,7 +13,7 @@ Talk with GPT is a sample program that allows you to have a conversation with Op
      │                 ┌─────────┐   │   ┌──────────────┐
      │   localhost:3001│ Server  │   │   │OpenAI        │
      └─────────────────┤         ├───┴───┤              │
-             Audio Data│ Express │       │gpt-3.5       │
+             Audio Data│Socket.io│       │gpt-3.5       │
                        └─────────┘       └──────────────┘
 ```
 

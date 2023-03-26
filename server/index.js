@@ -1,4 +1,3 @@
-import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
 
@@ -75,17 +74,12 @@ const createSynthesizeSpeech = async (message) => {
 };
 
 // Create a server with Express and Socket.io
-const app = express();
-const httpServer = createServer(app);
+const httpServer = createServer();
 const io = new Server(httpServer, {
   cors: {
     origin: "*", // Allow all origins
     methods: ["GET", "POST"],
   },
-});
-
-app.get("/", (req, res) => {
-  res.send("Server is running.");
 });
 
 io.on("connection", (socket) => {
